@@ -7,7 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { Modal, Button } from "react-bootstrap";
 import { ToastContainer, Toast } from "react-bootstrap";
 import UserAccount from "./UserAccount";
-import { fetchAdminTimetable, fetchLecturers, fetchClassrooms, checkClash, lockClass, releaseClass } from "../api/timetableAPI";
+import { fetchAdminTimetable, fetchLecturers, fetchClassrooms, checkClash, lockClass, releaseClass, rollbackTimetable, unrollbackTimetable } from "../api/timetableAPI";
 import { convertTimetableEntry } from "../utils/convertTimetableEntry";
 import { saveAdminTimetable } from "../api/timetableAPI";
 import { useCalendarStore } from "./calendarStore";
@@ -452,6 +452,56 @@ const toggleConflictHighlight = () => {
   }
 };
 
+const handleRollback = async () => {
+    if (!program || !year) {
+        alert("Please select a program and year before rolling back.");
+        return;
+    }
+    if (!window.confirm("Are you sure you want to rollback to the previous timetable version? This cannot be undone.")) {
+        return;
+    }
+    try {
+        const data = await rollbackTimetable(program, year);
+        if (data.status === "success") {
+            const formatted = data.entries
+                .map(entry => convertTimetableEntry(entry))
+                .filter(e => e !== null);
+            setEvents(formatted);
+            alert("Timetable rolled back successfully!");
+        } else {
+            alert("Failed to rollback timetable. Please try again.");
+        }
+    } catch (err) {
+        alert("Failed to rollback timetable. See console for details.");
+        console.error("Rollback error:", err);
+    }
+};
+
+const handleUnrollback = async () => {
+    if (!program || !year) {
+        alert("Please select a program and year before unrolling back.");
+        return;
+    }
+    if (!window.confirm("Are you sure you want to move forward to the next timetable version?")) {
+        return;
+    }
+    try {
+        const data = await unrollbackTimetable(program, year);
+        if (data.status === "success") {
+            const formatted = data.entries
+                .map(entry => convertTimetableEntry(entry))
+                .filter(e => e !== null);
+            setEvents(formatted);
+            alert("Timetable moved forward to next version successfully!");
+        } else {
+            alert("Failed to move forward. Please try again.");
+        }
+    } catch (err) {
+        alert("Failed to move forward. See console for details.");
+        console.error("Unrollback error:", err);
+    }
+};
+
 
     return (
         <div className="Container" style={{ display: "flex" }}>
@@ -543,6 +593,18 @@ const toggleConflictHighlight = () => {
                 disabled={clashEvents.length > 0}
             >
                 Save Timetable
+            </Button>
+            <Button
+                variant="danger"
+                onClick={handleRollback}
+            >
+                Rollback
+            </Button>
+            <Button
+                variant="info"
+                onClick={handleUnrollback}
+            >
+                Unrollback
             </Button>
             </div>
 
